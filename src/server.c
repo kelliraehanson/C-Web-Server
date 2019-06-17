@@ -55,6 +55,19 @@ int send_response(int fd, char *header, char *content_type, void *body, int cont
 
     // Build HTTP response and store it in response
 
+    time_t current;
+    struct tm *info;
+    time(&current);
+    info = localtime(&current);
+
+    int response_length = sprintf(response, "%s\n"
+                      "Date: %s"
+                      "Connection: close\n"
+                      "Content-Length: %d\n"
+                      "Content-Type: %s\n"
+                      "\n"
+                      "%s\n", header, asctime(info), content_length, content_type, (char *)body);
+
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
@@ -204,6 +217,7 @@ int main(void)
             perror("accept");
             continue;
         }
+        resp_404(newfd);
 
         // Print out a message that we got the connection
         inet_ntop(their_addr.ss_family,
