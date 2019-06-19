@@ -204,37 +204,60 @@ void get_cat(int fd)
  */
 void get_file(int fd, struct cache *cache, char *request_path)
 {
-    ///////////////////
-    // IMPLEMENT ME! //
-    ///////////////////
+    (void) cache;
+
+    char file_path[4096];
     struct file_data *filedata;
     char *mime_type;
-    char file_path[4096];
 
-    // printf(request_path);
-    // printf("\n %s%s \n", SERVER_ROOT, request_path);
+    // Fetch the file
+    snprintf(file_path, sizeof file_path, "%s%s", SERVER_ROOT, request_path);
+    filedata = file_load(file_path);
 
-        sprintf(file_path, "./serverroot%s", request_path); // File path to the ./serverroot directory
-        
-        filedata = file_load(file_path);
+    if (filedata == NULL) {
+        resp_404(fd);
+        return;
+    }
 
-        if (filedata == NULL)
-        {
-            sprintf(file_path, "./serverroot%s/index.html", request_path); // The input '/' goes to the index.html file.
-            filedata = file_load(file_path);
-            if (filedata == NULL)
-            {
-                resp_404(fd);
-            }
-        }
+    mime_type = mime_type_get(file_path);
 
-        mime_type = mime_type_get(file_path);
+    send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
 
-        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
-
-        file_free(filedata);
+    file_free(filedata);
 }
 
+// void get_file(int fd, struct cache *cache, char *request_path)
+// {
+//     ///////////////////
+//     // IMPLEMENT ME! //
+//     ///////////////////
+//     struct file_data *filedata;
+//     char *mime_type;
+//     char file_path[4096];
+
+//     // printf(request_path);
+//     // printf("\n %s%s \n", SERVER_ROOT, request_path);
+
+//         sprintf(file_path, "./serverroot%s", request_path); // File path to the ./serverroot directory
+        
+//         filedata = file_load(file_path);
+
+//         if (filedata == NULL)
+//         {
+//             sprintf(file_path, "./serverroot%s/index.html", request_path); // The input '/' goes to the index.html file.
+//             filedata = file_load(file_path);
+//             if (filedata == NULL)
+//             {
+//                 resp_404(fd);
+//             }
+//         }
+
+//         mime_type = mime_type_get(file_path);
+
+//         send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+
+//         file_free(filedata);
+// }
 
 /**
  * Search for the end of the HTTP header
@@ -288,7 +311,8 @@ void handle_http_request(int fd, struct cache *cache)
                 get_cat(fd);
 
         } else {
-            resp_404(fd); // If you can't find the GET handler, call `resp_404()` instead to give them a "404 Not Found" response.
+            get_file(fd, NULL, path); 
+            // resp_404(fd); // If you can't find the GET handler, call `resp_404()` instead to give them a "404 Not Found" response.
         }
     } else {
        printf("Unhandled method: %s\n", method);
