@@ -203,62 +203,41 @@ void get_cat(int fd)
  * Read and return a file from disk or cache
  */
 void get_file(int fd, struct cache *cache, char *request_path)
-{
-    (void) cache;
-
+{    
     char file_path[4096];
     struct file_data *filedata;
     char *mime_type;
 
-    // Fetch the file
-    snprintf(file_path, sizeof file_path, "%s%s", SERVER_ROOT, request_path);
-    filedata = file_load(file_path);
+    struct cache_entry *entry = cache_get(cache, request_path);
 
-    if (filedata == NULL) {
-        resp_404(fd);
+    if (entry == NULL)
+    {
+        sprintf(file_path, "./serverroot%s", request_path);
+        filedata = file_load(file_path);
+
+        if (filedata == NULL) {
+            sprintf(file_path, "./serverroot%s/index.html", request_path);
+            filedata = file_load(file_path);
+            if (filedata == NULL)
+            {
+                resp_404(fd);
+                return;
+            }
+        }
+
+        mime_type = mime_type_get(file_path);
+
+        cache_put(cache, request_path, mime_type, filedata->data, filedata->size);
+
+        send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
+
+        file_free(filedata);
         return;
     }
-
-    mime_type = mime_type_get(file_path);
-
-    send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
-
-    file_free(filedata);
+    
+    send_response(fd, "HTTP/1.1 200 OK", entry->content_type, entry->content, entry->content_length);
+    return;
 }
-
-// void get_file(int fd, struct cache *cache, char *request_path)
-// {
-//     ///////////////////
-//     // IMPLEMENT ME! //
-//     ///////////////////
-//     struct file_data *filedata;
-//     char *mime_type;
-//     char file_path[4096];
-
-//     // printf(request_path);
-//     // printf("\n %s%s \n", SERVER_ROOT, request_path);
-
-//         sprintf(file_path, "./serverroot%s", request_path); // File path to the ./serverroot directory
-        
-//         filedata = file_load(file_path);
-
-//         if (filedata == NULL)
-//         {
-//             sprintf(file_path, "./serverroot%s/index.html", request_path); // The input '/' goes to the index.html file.
-//             filedata = file_load(file_path);
-//             if (filedata == NULL)
-//             {
-//                 resp_404(fd);
-//             }
-//         }
-
-//         mime_type = mime_type_get(file_path);
-
-//         send_response(fd, "HTTP/1.1 200 OK", mime_type, filedata->data, filedata->size);
-
-//         file_free(filedata);
-// }
-
 /**
  * Search for the end of the HTTP header
  * 
@@ -290,6 +269,7 @@ void handle_http_request(int fd, struct cache *cache)
         return;
     }
 
+
     ///////////////////
     // IMPLEMENT ME! //
     ///////////////////
@@ -308,18 +288,19 @@ void handle_http_request(int fd, struct cache *cache)
             get_d20(fd);
 
         } else if (strcmp(path, "/cat") == 0) {
-                get_cat(fd);
+               get_cat(fd);
 
         } else {
-            get_file(fd, NULL, path); 
+            get_file(fd, cache, path);
             // resp_404(fd); // If you can't find the GET handler, call `resp_404()` instead to give them a "404 Not Found" response.
         }
     } else {
-       printf("Unhandled method: %s\n", method);
+        resp_404(fd);
     }
 
     // (Stretch) If POST, handle the post request
 }
+
 
 /**
  * Main
